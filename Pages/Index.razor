@@ -1,0 +1,111 @@
+@page "/"
+
+@using System.Globalization
+
+<PageTitle>Финансовый Калькулятор</PageTitle>
+
+<h1>Финансовый Калькулятор: Сложение и Вычитание Больших Чисел</h1>
+
+<p>ФИО: Кулич София Петровна</p>
+<p>Курс: 4, Группа: 4</p>
+<p>Год: 2025</p>
+
+<p>Введите два числа (от -1000000000000.000000 до +1000000000000.000000). Выберите операцию.</p>
+
+<div>
+    <label>Число 1:</label>
+    <input type="text" @bind="num1Str" placeholder="например, 1.0" />
+</div>
+
+<div>
+    <label>Число 2:</label>
+    <input type="text" @bind="num2Str" placeholder="например, 2.0" />
+</div>
+
+<div>
+    <label>Метод округления для результата:</label>
+    <select @bind="roundingMethod">
+        <option value="Mathematical">Математическое (половина вверх)</option>
+        <option value="Banking">Банковское (половина к четному)</option>
+    </select>
+</div>
+
+<div>
+    <button @onclick="CalculateSum">Сложение (+)</button>
+    <button @onclick="CalculateDifference">Вычитание (-)</button>
+</div>
+
+@if (!string.IsNullOrEmpty(result))
+{
+    <p>Результат: @result</p>
+}
+
+@if (!string.IsNullOrEmpty(error))
+{
+    <p style="color: red;">@error</p>
+}
+
+@code {
+    private string num1Str = "";
+    private string num2Str = "";
+    private string roundingMethod = "Banking"; // По умолчанию банковское
+    private string result = "";
+    private string error = "";
+    private const decimal MaxRange = 1000000000000M;
+
+    private void CalculateSum()
+    {
+        PerformCalculation((a, b) => a + b);
+    }
+
+    private void CalculateDifference()
+    {
+        PerformCalculation((a, b) => a - b);
+    }
+
+    private void PerformCalculation(Func<decimal, decimal, decimal> operation)
+    {
+        error = "";
+        result = "";
+
+        // Замена запятой на точку для унификации разделителя (поддержка . и ,)
+        num1Str = num1Str.Replace(',', '.');
+        num2Str = num2Str.Replace(',', '.');
+
+        // Парсинг с invariant culture для независимости от региональных настроек ОС
+        if (!decimal.TryParse(num1Str, NumberStyles.Number, CultureInfo.InvariantCulture, out decimal num1))
+        {
+            error = "Некорректное Число 1. Введите validное десятичное число.";
+            return;
+        }
+
+        if (!decimal.TryParse(num2Str, NumberStyles.Number, CultureInfo.InvariantCulture, out decimal num2))
+        {
+            error = "Некорректное Число 2. Введите validное десятичное число.";
+            return;
+        }
+
+        // Проверка диапазона входных чисел
+        if (Math.Abs(num1) > MaxRange || Math.Abs(num2) > MaxRange)
+        {
+            error = "Числа превышают допустимый диапазон (±1 000 000 000 000.000000).";
+            return;
+        }
+
+        decimal calcResult = operation(num1, num2);
+
+        // Проверка переполнения результата
+        if (Math.Abs(calcResult) > MaxRange)
+        {
+            error = "Переполнение: результат превышает допустимый диапазон.";
+            return;
+        }
+
+        // Округление до 6 знаков после точки с выбранным методом
+        MidpointRounding mode = roundingMethod == "Mathematical" ? MidpointRounding.AwayFromZero : MidpointRounding.ToEven;
+        calcResult = Math.Round(calcResult, 6, mode);
+
+        // Вывод в фиксированной нотации с 6 знаками после точки (без экспоненты)
+        result = calcResult.ToString("F6", CultureInfo.InvariantCulture);
+    }
+}
